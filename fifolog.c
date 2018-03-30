@@ -8,7 +8,7 @@
 
 #define OUTBUFSZ PIPE_BUF
 
-// Return 1, 0 otherwise when we are ready to flush the buffer.
+// Return 1 when we are ready to flush the buffer, else 0.
 int
 feed(char c, int *noutbuf, char outbuf[])
 {
