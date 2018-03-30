@@ -6,105 +6,78 @@
 #include <stdlib.h>
 #include <string.h>
 
-void
-usage(char *name)
+#define OUTBUFSZ PIPE_BUF
+
+// Return 1, 0 otherwise when we are ready to flush the buffer.
+int
+feed(char c, int *noutbuf, char outbuf[])
 {
-    fprintf(stderr, "%s PREFIX\n", name);
+	if (c == '\n') {
+		outbuf[(*noutbuf)++] = c;
+		return 1;
+	}
+
+	if (*noutbuf == OUTBUFSZ-1) {
+		return 0;
+	}
+
+	outbuf[(*noutbuf)++] = c;
+	return 0;
 }
 
 int
 main(int argc, char **argv) {
-    if (argc != 2) {
-        usage(argv[0]);
-        exit(1);
-    }
-    int eof = 0;
-    char buf[PIPE_BUF] = {0};
-    ssize_t prefixlen = strlen(argv[1]);
-    prefixlen = (prefixlen > 1000) ? 1000 : prefixlen;
-    memcpy(buf, argv[1], prefixlen);
+	char *prefix;
+	char  outbuf[OUTBUFSZ];
+	int   noutbuf = 0;
 
-    char *inbuf = buf + prefixlen;
-    ssize_t bufsz = sizeof(buf) - prefixlen;
-    ssize_t nbuff = 0;
-    
-    while (!eof) {
-        assert(nbuff <= bufsz);
+	if (argc != 2) {
+		fprintf(stderr, "%s PREFIX\n", argv[0]);
+		exit(1);
+	}
+	prefix = argv[1];
 
-        int i = 0;
-        int hasnl = 0;
-        ssize_t nread = 0;
-        ssize_t scan = 0;
-        ssize_t nafternl = 0;
+	int prefixlen = strlen(prefix);
+	int truncprefixlen = (prefixlen > 510 ? 510 : prefixlen);
+	// We must have enough space for the prefix, one char and a new line.
+	assert(truncprefixlen + 2 <= sizeof(outbuf));
+	memcpy(outbuf, prefix, truncprefixlen);
+	noutbuf += truncprefixlen;
+	
+	char inbuf[PIPE_BUF];
+	
+	while (1) {
+		int nread = read(STDIN_FILENO, inbuf, sizeof(inbuf));
 
-        // Read at most PIPE_BUF bytes, or until newline
+		if (nread < 0) {
+			perror("error reading data");
+			exit(1);
+		}
+		if (nread == 0) {
+			break;
+		}
 
-        while (nbuff < bufsz) {
-            nread = read(STDIN_FILENO, inbuf + nbuff, bufsz - nbuff);
- 
-            if (nread < 0) {
-                perror("error reading data");
-                exit(1);
-            }
+		for (int i = 0; i < nread; i++) {
+			if (feed(inbuf[i], &noutbuf, outbuf)) {
+				if (write(STDOUT_FILENO, outbuf, noutbuf) < 0) {
+					perror("error writing output");
+					exit(1);
+				}
+				noutbuf = truncprefixlen;
+			}
+		}
+	}
+	
+	if(!feed('\n', &noutbuf, outbuf)) {
+		assert(0 || "unexpected error");
+	}
 
-            nbuff += nread;
-            assert(nbuff <= bufsz);
+	if (noutbuf > truncprefixlen + 1) {
+		if (write(STDOUT_FILENO, outbuf, noutbuf) < 0) {
+			perror("error writing output");
+			exit(1);
+		}
+	}
 
-            for (; scan < nbuff; scan++) {
-                if (inbuf[scan] == '\n') {
-                    hasnl = 1;
-                    goto print_line;
-                }
-            }
-
-            if (nread == 0) {
-                eof = 1;
-                goto print_line;
-            }
-        }
-
-        print_line:
-
-        assert(nbuff <= bufsz);
-        assert((hasnl && inbuf[scan] == '\n')
-          || (!hasnl && nbuff <= bufsz && nbuff == scan));
-        
-        if (write(STDOUT_FILENO, buf, prefixlen + (hasnl ? scan + 1 : nbuff)) < 0) {
-            perror("error writing output");
-            exit(1);
-        }
-
-        if (!hasnl) {
-            // truncate the line by just reading until '\n', EOF, or error.
-            char throwaway[1] = {0};
-            while(throwaway[0] != '\n') {
-                nread = read(STDIN_FILENO, throwaway, sizeof(throwaway));
-                if (nread < 0) {
-                    perror("error reading data");
-                    exit(1);
-                }
-                if (nread == 0) {
-                    break;
-                }
-            }
-
-            throwaway[0] = '\n';
-            if (write(STDOUT_FILENO, throwaway, sizeof(throwaway)) < 0) {
-                perror("error writing output");
-                exit(1);
-            }
-        }
-
-        // Reset nbuff and the buffer to deal with the next line.
-        nafternl = hasnl ? (nbuff - (scan + 1)) : 0;
-
-        for (i = 0; i < nafternl; i++) {
-            inbuf[i] = inbuf[scan + 1 + i];
-        }
-
-        nbuff = nafternl;
-    }
-
-
-    return 0;
+	return 0;
 }
