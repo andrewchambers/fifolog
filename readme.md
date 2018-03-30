@@ -4,7 +4,7 @@ when run as ```fifolog PREFIX``` fifolog reads data from stdin, then outputs lin
 
 PREFIX || LINE[0..(PIPE_BUF-LEN(PREFIX))]
 
-truncating lines longer than PIPE_BUF.
+truncating lines longer than PIPE_BUF. If PREFIX is longer than 240 characters it is truncated to 240 characters.
 
 This enables atomic labeled writes to a unix pipe. Consider
 the following example:
