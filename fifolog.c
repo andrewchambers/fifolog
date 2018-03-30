@@ -28,8 +28,9 @@ feed(char c, int *noutbuf, char outbuf[])
 int
 main(int argc, char **argv) {
 	char *prefix;
-	char  outbuf[OUTBUFSZ];
-	int   noutbuf = 0;
+	char  inbuf[PIPE_BUF];
+    char  outbuf[OUTBUFSZ];
+    int   noutbuf = 0;
 
 	if (argc != 2) {
 		fprintf(stderr, "%s PREFIX\n", argv[0]);
@@ -38,13 +39,12 @@ main(int argc, char **argv) {
 	prefix = argv[1];
 
 	int prefixlen = strlen(prefix);
-	int truncprefixlen = (prefixlen > 510 ? 510 : prefixlen);
+	int truncprefixlen = (prefixlen > 510) ? 510 : prefixlen;
 	// We must have enough space for the prefix, one char and a new line.
 	assert(truncprefixlen + 2 <= sizeof(outbuf));
 	memcpy(outbuf, prefix, truncprefixlen);
 	noutbuf += truncprefixlen;
 	
-	char inbuf[PIPE_BUF];
 	
 	while (1) {
 		int nread = read(STDIN_FILENO, inbuf, sizeof(inbuf));
