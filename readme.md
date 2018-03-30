@@ -2,9 +2,11 @@
 
 when run as ```fifolog PREFIX``` fifolog reads data from stdin, then outputs lines in the format:
 
-PREFIX || LINE[0..(PIPE_BUF-LEN(PREFIX))]
+PREFIX || LINE[0..(PIPE_BUF-LEN(PREFIX) - 1)] || '\n'
 
-truncating lines longer than PIPE_BUF. If PREFIX is longer than 240 characters it is truncated to 240 characters.
+truncating lines longer than PIPE_BUF. If PREFIX is longer than 510 characters it is truncated to 510 characters.
+
+fifolog terminates with a non zero exit code if any IO errors are encountered.
 
 This enables atomic labeled writes to a unix pipe. Consider
 the following example:
