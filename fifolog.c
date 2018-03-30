@@ -29,8 +29,8 @@ int
 main(int argc, char **argv) {
 	char *prefix;
 	char  inbuf[PIPE_BUF];
-    char  outbuf[OUTBUFSZ];
-    int   noutbuf = 0;
+	char  outbuf[OUTBUFSZ];
+	int   noutbuf = 0;
 
 	if (argc != 2) {
 		fprintf(stderr, "%s PREFIX\n", argv[0]);
