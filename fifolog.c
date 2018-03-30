@@ -68,7 +68,7 @@ main(int argc, char **argv) {
 		}
 	}
 	
-	if(!feed('\n', &noutbuf, outbuf)) {
+	if (!feed('\n', &noutbuf, outbuf)) {
 		assert(0 || "unexpected error");
 	}
 
