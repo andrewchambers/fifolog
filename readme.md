@@ -19,4 +19,4 @@ mkfifo logstream
 cat logstream
 ```
 
-The terminal will get non interleaved labeled line output guaranteed because each line written to fifo is smaller than PIPE_BUF.
+The terminal will get interleaved, but not jumbled labeled line output guaranteed because each labeled write to fifo is smaller than PIPE_BUF.
